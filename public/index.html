@@ -773,6 +773,9 @@
       }
 
       fetchState();
+
+      // Poll every 1 second so both devices stay in sync
+      setInterval(fetchState, 1000);
     </script>
   </body>
 </html>
