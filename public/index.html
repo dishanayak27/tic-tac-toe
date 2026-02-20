@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TIC TAC TOE</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #030303;
+        --panel: rgba(255, 255, 255, 0.03);
+        --panel-solid: #0e0e14;
+        --border: rgba(255, 255, 255, 0.08);
+        --border-bright: rgba(255, 255, 255, 0.15);
+        --x-color: #ff4d6d;
+        --o-color: #4dffb8;
+        --accent: #ffe94d;
+        --text: #e8e8f0;
+        --dim: rgba(255, 255, 255, 0.3);
+        --win-glow: rgba(255, 233, 77, 0.1);
+        --cell-bg: rgba(255, 255, 255, 0.02);
+        --cell-hover: rgba(255, 255, 255, 0.05);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Press Start 2P", monospace;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* ===================== ELEGANT BACKGROUND ===================== */
+
+      /* Ambient gradient mesh */
+      .bg-gradient {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 20% 40%,
+            rgba(99, 102, 241, 0.05) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 60% 50% at 80% 70%,
+            rgba(244, 63, 94, 0.05) 0%,
+            transparent 60%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Top/bottom fade vignette */
+      .bg-vignette {
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(
+          to bottom,
+          rgba(3, 3, 3, 0.8) 0%,
+          transparent 20%,
+          transparent 80%,
+          rgba(3, 3, 3, 0.8) 100%
+        );
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      /* Floating shapes container */
+      .shapes {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .shape {
+        position: absolute;
+        border-radius: 9999px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(2px);
+        /* inner glow */
+        box-shadow:
+          0 8px 32px 0 rgba(255, 255, 255, 0.06),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      }
+
+      /* Each shape: slide in from above, then float */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-160px) rotate(var(--rot-start));
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0px) rotate(var(--rot-end));
+        }
+      }
+
+      @keyframes floatY {
+        0%,
+        100% {
+          transform: translateY(0px) rotate(var(--rot-end));
+        }
+        50% {
+          transform: translateY(18px) rotate(var(--rot-end));
+        }
+      }
+
+      .shape {
+        opacity: 0;
+        animation:
+          slideIn var(--slide-dur, 2.4s) var(--delay, 0s)
+            cubic-bezier(0.23, 0.86, 0.39, 0.96) forwards,
+          floatY var(--float-dur, 12s)
+            calc(var(--delay, 0s) + var(--slide-dur, 2.4s)) ease-in-out infinite;
+      }
+
+      /* Shape 1 — indigo pill, top-left */
+      .shape-1 {
+        width: 600px;
+        height: 140px;
+        left: -5%;
+        top: 20%;
+        background: linear-gradient(
+          to right,
+          rgba(99, 102, 241, 0.15),
+          transparent
+        );
+        --rot-start: -3deg;
+        --rot-end: 12deg;
+        --delay: 0.3s;
+        --slide-dur: 2.4s;
+        --float-dur: 12s;
+        transform-origin: center center;
+      }
+      /* fix rotation for float */
+      .shape-1 {
+        transform: rotate(12deg);
+      }
+
+      /* Shape 2 — rose pill, bottom-right */
+      .shape-2 {
+        width: 500px;
+        height: 120px;
+        right: 0%;
+        top: 75%;
+        background: linear-gradient(
+          to right,
+          rgba(244, 63, 94, 0.15),
+          transparent
+        );
+        --rot-start: -30deg;
+        --rot-end: -15deg;
+        --delay: 0.5s;
+        --slide-dur: 2.4s;
+        --float-dur: 14s;
+      }
+
+      /* Shape 3 — violet small, bottom-left */
+      .shape-3 {
+        width: 300px;
+        height: 80px;
+        left: 10%;
+        bottom: 10%;
+        background: linear-gradient(
+          to right,
+          rgba(139, 92, 246, 0.15),
+          transparent
+        );
+        --rot-start: -23deg;
+        --rot-end: -8deg;
+        --delay: 0.4s;
+        --slide-dur: 2.4s;
+        --float-dur: 10s;
+      }
+
+      /* Shape 4 — amber tiny, top-right */
+      .shape-4 {
+        width: 200px;
+        height: 60px;
+        right: 20%;
+        top: 15%;
+        background: linear-gradient(
+          to right,
+          rgba(245, 158, 11, 0.15),
+          transparent
+        );
+        --rot-start: 5deg;
+        --rot-end: 20deg;
+        --delay: 0.6s;
+        --slide-dur: 2.4s;
+        --float-dur: 9s;
+      }
+
+      /* Shape 5 — cyan tiny, top-center-left */
+      .shape-5 {
+        width: 150px;
+        height: 40px;
+        left: 25%;
+        top: 10%;
+        background: linear-gradient(
+          to right,
+          rgba(6, 182, 212, 0.15),
+          transparent
+        );
+        --rot-start: -40deg;
+        --rot-end: -25deg;
+        --delay: 0.7s;
+        --slide-dur: 2.4s;
+        --float-dur: 11s;
+      }
+
+      /* ===================== UI ===================== */
+
+      .container {
+        width: 100%;
+        max-width: 460px;
+        position: relative;
+        z-index: 10;
+      }
+
+      /* TITLE */
+      .title-wrap {
+        text-align: center;
+        margin-bottom: 24px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 14px;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 16px;
+      }
+
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(244, 63, 94, 0.8);
+      }
+
+      .badge-text {
+        font-size: 7px;
+        color: rgba(255, 255, 255, 0.5);
+        letter-spacing: 3px;
+        font-family: "Press Start 2P", monospace;
+      }
+
+      .title {
+        font-size: clamp(20px, 5vw, 32px);
+        letter-spacing: 4px;
+        background: linear-gradient(
+          to bottom,
+          #ffffff,
+          rgba(255, 255, 255, 0.75)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 4px;
+      }
+
+      .title-2 {
+        font-size: clamp(12px, 3vw, 18px);
+        letter-spacing: 3px;
+        background: linear-gradient(
+          to right,
+          #a5b4fc,
+          rgba(255, 255, 255, 0.85),
+          #fda4af
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* SCOREBOARD */
+      .scores {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+
+      .score-card {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        padding: 12px 8px;
+        text-align: center;
+        position: relative;
+        transition:
+          border-color 0.3s,
+          box-shadow 0.3s;
+        border-radius: 2px;
+      }
+
+      .score-card.active-x {
+        border-color: rgba(255, 77, 109, 0.4);
+        box-shadow: 0 0 20px rgba(255, 77, 109, 0.1);
+      }
+      .score-card.active-o {
+        border-color: rgba(77, 255, 184, 0.4);
+        box-shadow: 0 0 20px rgba(77, 255, 184, 0.1);
+      }
+
+      .score-label {
+        font-size: 6px;
+        color: rgba(255, 255, 255, 0.25);
+        margin-bottom: 6px;
+        letter-spacing: 2px;
+      }
+
+      .score-player {
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+      .score-player.x {
+        color: var(--x-color);
+        text-shadow: 0 0 14px rgba(255, 77, 109, 0.5);
+      }
+      .score-player.o {
+        color: var(--o-color);
+        text-shadow: 0 0 14px rgba(77, 255, 184, 0.5);
+      }
+      .score-player.draw {
+        color: rgba(255, 255, 255, 0.4);
+      }
+
+      .score-num {
+        font-size: 28px;
+        font-family: "VT323", monospace;
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .turn-arrow {
+        position: absolute;
+        top: 5px;
+        right: 7px;
+        font-size: 7px;
+        color: rgba(255, 255, 255, 0.4);
+        animation: blink 1s infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* STATUS BAR */
+      .status {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        padding: 10px 14px;
+        text-align: center;
+        font-size: 9px;
+        letter-spacing: 2px;
+        margin-bottom: 12px;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.4s;
+        border-radius: 2px;
+      }
+
+      .status.win {
+        border-color: rgba(255, 233, 77, 0.3);
+        color: rgba(255, 233, 77, 0.9);
+        box-shadow: 0 0 24px rgba(255, 233, 77, 0.08);
+      }
+      .status.draw {
+        border-color: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.35);
+      }
+      .status .player-tag {
+        padding: 2px 6px;
+        font-size: 9px;
+      }
+      .status .player-tag.x {
+        color: var(--x-color);
+      }
+      .status .player-tag.o {
+        color: var(--o-color);
+      }
+
+      /* GRID */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 3px;
+        margin-bottom: 12px;
+        aspect-ratio: 1;
+      }
+
+      .cell {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(28px, 8vw, 52px);
+        font-family: "Press Start 2P", monospace;
+        position: relative;
+        transition:
+          background 0.2s,
+          border-color 0.2s,
+          transform 0.05s;
+        user-select: none;
+        border-radius: 2px;
+      }
+
+      .cell:hover:not(.taken):not(.over) {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+
+      .cell:active:not(.taken):not(.over) {
+        transform: scale(0.96);
+      }
+
+      .cell.x-cell {
+        color: var(--x-color);
+        text-shadow: 0 0 20px rgba(255, 77, 109, 0.5);
+      }
+      .cell.o-cell {
+        color: var(--o-color);
+        text-shadow: 0 0 20px rgba(77, 255, 184, 0.5);
+      }
+      .cell.taken {
+        cursor: default;
+      }
+      .cell.over {
+        cursor: default;
+      }
+
+      .cell.winning {
+        background: rgba(255, 233, 77, 0.06);
+        border-color: rgba(255, 233, 77, 0.35) !important;
+        animation: win-pulse 1s ease-in-out infinite alternate;
+      }
+
+      @keyframes win-pulse {
+        from {
+          box-shadow: inset 0 0 10px rgba(255, 233, 77, 0.1);
+        }
+        to {
+          box-shadow:
+            inset 0 0 24px rgba(255, 233, 77, 0.2),
+            0 0 16px rgba(255, 233, 77, 0.08);
+        }
+      }
+
+      .cell-content {
+        display: inline-block;
+      }
+
+      .cell.x-cell .cell-content,
+      .cell.o-cell .cell-content {
+        animation: pop-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      @keyframes pop-in {
+        0% {
+          transform: scale(0) rotate(-15deg);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+      }
+
+      /* BUTTONS */
+      .buttons {
+        display: flex;
+        gap: 6px;
+      }
+
+      .btn {
+        flex: 1;
+        padding: 12px 8px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 7px;
+        letter-spacing: 1px;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.02);
+        color: rgba(255, 255, 255, 0.5);
+        transition: all 0.2s;
+        text-transform: uppercase;
+        border-radius: 2px;
+      }
+
+      .btn:hover {
+        border-color: rgba(255, 255, 255, 0.2);
+        color: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .btn:active {
+        transform: scale(0.97);
+      }
+
+      .btn.primary {
+        border-color: rgba(77, 255, 184, 0.25);
+        color: rgba(77, 255, 184, 0.7);
+      }
+      .btn.primary:hover {
+        background: rgba(77, 255, 184, 0.06);
+        border-color: rgba(77, 255, 184, 0.4);
+        color: rgba(77, 255, 184, 0.9);
+        box-shadow: 0 0 16px rgba(77, 255, 184, 0.1);
+      }
+
+      .error-msg {
+        font-size: 7px;
+        color: rgba(255, 77, 109, 0.8);
+        text-align: center;
+        margin-top: 10px;
+        min-height: 14px;
+        letter-spacing: 1px;
+      }
+
+      /* Entrance animations for UI */
+      .badge {
+        animation: fadeUp 1s 0.5s both;
+      }
+      .title-wrap h1 {
+        animation: fadeUp 1s 0.7s both;
+      }
+      .scores {
+        animation: fadeUp 1s 0.9s both;
+      }
+      .status {
+        animation: fadeUp 1s 1s both;
+      }
+      .grid {
+        animation: fadeUp 1s 1.1s both;
+      }
+      .buttons {
+        animation: fadeUp 1s 1.2s both;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- === BACKGROUND LAYERS === -->
+    <div class="bg-gradient"></div>
+
+    <div class="shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+      <div class="shape shape-4"></div>
+      <div class="shape shape-5"></div>
+    </div>
+
+    <div class="bg-vignette"></div>
+
+    <!-- === GAME UI === -->
+    <div class="container">
+      <div class="title-wrap">
+        <div style="display: flex; justify-content: center">
+          <div class="badge">
+            <div class="badge-dot"></div>
+            <span class="badge-text">2 PLAYER LOCAL</span>
+          </div>
+        </div>
+        <h1>
+          <div class="title">TIC TAC TOE</div>
+          <div class="title-2">CLASSIC EDITION</div>
+        </h1>
+      </div>
+
+      <!-- Scoreboard -->
+      <div class="scores">
+        <div class="score-card" id="card-x">
+          <div class="score-label">PLAYER</div>
+          <div class="score-player x">X</div>
+          <div class="score-num" id="score-x">0</div>
+        </div>
+        <div class="score-card" id="card-draw">
+          <div class="score-label">DRAWS</div>
+          <div class="score-player draw">—</div>
+          <div class="score-num" id="score-draws">0</div>
+        </div>
+        <div class="score-card" id="card-o">
+          <div class="score-label">PLAYER</div>
+          <div class="score-player o">O</div>
+          <div class="score-num" id="score-o">0</div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="status" id="status">
+        <span class="player-tag x">X</span> GOES FIRST
+      </div>
+
+      <!-- Grid -->
+      <div class="grid" id="grid"></div>
+
+      <!-- Buttons -->
+      <div class="buttons">
+        <button class="btn primary" onclick="resetGame()">▶ NEW ROUND</button>
+        <button class="btn" onclick="newGame()">↺ RESET ALL</button>
+      </div>
+
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <script>
+      let state = null;
+
+      async function fetchState() {
+        const res = await fetch("/api/game");
+        state = await res.json();
+        render();
+      }
+
+      async function makeMove(index) {
+        if (!state) return;
+        if (state.board[index] || state.winner || state.isDraw) return;
+
+        const res = await fetch("/api/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+        state = data;
+        render();
+      }
+
+      async function resetGame() {
+        const res = await fetch("/api/reset", { method: "POST" });
+        state = await res.json();
+        render();
+      }
+
+      async function newGame() {
+        const res = await fetch("/api/new", { method: "POST" });
+        state = await res.json();
+        render();
+      }
+
+      function render() {
+        if (!state) return;
+        clearError();
+        renderBoard();
+        renderScores();
+        renderStatus();
+        renderTurnIndicator();
+      }
+
+      function renderBoard() {
+        const grid = document.getElementById("grid");
+        grid.innerHTML = "";
+        const isOver = !!(state.winner || state.isDraw);
+
+        state.board.forEach((val, i) => {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          if (val === "X") cell.classList.add("x-cell", "taken");
+          if (val === "O") cell.classList.add("o-cell", "taken");
+          if (isOver) cell.classList.add("over");
+          if (state.winningLine && state.winningLine.includes(i))
+            cell.classList.add("winning");
+
+          if (val) {
+            const span = document.createElement("span");
+            span.className = "cell-content";
+            span.textContent = val;
+            cell.appendChild(span);
+          }
+
+          if (!val && !isOver)
+            cell.addEventListener("click", () => makeMove(i));
+          grid.appendChild(cell);
+        });
+      }
+
+      function renderScores() {
+        document.getElementById("score-x").textContent = state.scores.X;
+        document.getElementById("score-o").textContent = state.scores.O;
+        document.getElementById("score-draws").textContent = state.scores.draws;
+      }
+
+      function renderStatus() {
+        const el = document.getElementById("status");
+        el.className = "status";
+        if (state.winner) {
+          el.classList.add("win");
+          el.innerHTML = `<span class="player-tag ${state.winner.toLowerCase()}">${state.winner}</span> WINS!`;
+        } else if (state.isDraw) {
+          el.classList.add("draw");
+          el.textContent = "— DRAW —";
+        } else {
+          const p = state.currentPlayer;
+          el.innerHTML = `<span class="player-tag ${p.toLowerCase()}">${p}</span> TO PLAY`;
+        }
+      }
+
+      function renderTurnIndicator() {
+        document.getElementById("card-x").className = "score-card";
+        document.getElementById("card-o").className = "score-card";
+        if (!state.winner && !state.isDraw) {
+          if (state.currentPlayer === "X") {
+            document.getElementById("card-x").className = "score-card active-x";
+            document.getElementById("card-x").innerHTML +=
+              '<span class="turn-arrow">▶</span>';
+          } else {
+            document.getElementById("card-o").className = "score-card active-o";
+            document.getElementById("card-o").innerHTML +=
+              '<span class="turn-arrow">▶</span>';
+          }
+        }
+      }
+
+      function showError(msg) {
+        document.getElementById("error").textContent = "⚠ " + msg.toUpperCase();
+        setTimeout(clearError, 2000);
+      }
+      function clearError() {
+        document.getElementById("error").textContent = "";
+      }
+
+      fetchState();
+    </script>
+  </body>
+</html>
