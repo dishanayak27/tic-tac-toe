@@ -99,6 +99,19 @@ setInterval(() => {
   });
 }, 60 * 1000);
 
+// ── Swap player symbols randomly ─────────────────────────────
+function reshufflePlayers(room) {
+  // Always randomly reassign — put both players in an array, shuffle, reassign
+  const players = [room.players.X, room.players.O];
+  // Fisher-Yates shuffle on 2 items = always 50/50 swap
+  if (Math.random() < 0.5) players.reverse();
+  room.players.X = players[0];
+  room.players.O = players[1];
+  if (players[0]) players[0].symbol = 'X';
+  if (players[1]) players[1].symbol = 'O';
+  room.currentPlayer = 'X';
+}
+
 // ── WebSocket handler ─────────────────────────────────────────
 wss.on('connection', (ws) => {
   ws.roomCode = null;
@@ -185,13 +198,18 @@ wss.on('connection', (ws) => {
       const room = rooms[ws.roomCode];
       if (!room) return;
       const scores = { ...room.scores };
-      const players = { ...room.players };
       Object.assign(room, {
         board: Array(9).fill(null), currentPlayer: 'X',
         winner: null, winningLine: null,
-        isDraw: false, moveCount: 0, scores, players,
+        isDraw: false, moveCount: 0, scores,
       });
+      reshufflePlayers(room);
       room.lastActivity = Date.now();
+      // Notify each player of their (possibly new) symbol
+      ['X','O'].forEach(sym => {
+        const pw = room.players[sym];
+        if (pw && pw.readyState === 1) pw.send(JSON.stringify({ type: 'symbolUpdate', symbol: sym }));
+      });
       broadcastRoom(room);
     }
 
@@ -199,14 +217,18 @@ wss.on('connection', (ws) => {
     if (type === 'new') {
       const room = rooms[ws.roomCode];
       if (!room) return;
-      const players = { ...room.players };
       Object.assign(room, {
         board: Array(9).fill(null), currentPlayer: 'X',
         winner: null, winningLine: null,
         isDraw: false, moveCount: 0,
-        scores: { X: 0, O: 0, draws: 0 }, players,
+        scores: { X: 0, O: 0, draws: 0 },
       });
+      reshufflePlayers(room);
       room.lastActivity = Date.now();
+      ['X','O'].forEach(sym => {
+        const pw = room.players[sym];
+        if (pw && pw.readyState === 1) pw.send(JSON.stringify({ type: 'symbolUpdate', symbol: sym }));
+      });
       broadcastRoom(room);
     }
   });

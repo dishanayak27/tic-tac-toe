@@ -492,6 +492,10 @@
         renderGame();
       }
 
+      if (msg.type === 'symbolUpdate') {
+        mySymbol = msg.symbol;
+      }
+
       if (msg.type === 'opponentLeft') {
         startDisconnectCountdown(msg.gracePeriod);
       }
